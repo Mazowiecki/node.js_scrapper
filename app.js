@@ -1,6 +1,7 @@
 var express = require('express');
 var app = express();
 const fs = require('fs');
+const csvjson = require('csvjson');
 var json2csv = require('json2csv');
 const csv = require('fast-csv');
 const prompt = require('prompt');
@@ -16,10 +17,20 @@ const csvWriter = createCsvWriter({
         {id: 'country', title: 'Country'},
         {id: 'company', title: 'Company'},
         {id: 'position', title: 'Position'},
+        {id: 'companyType', title: 'CompanyType'},
     ]
 });
+const csvWriter2 = createCsvWriter({
+    path: 'log.csv',
+    header: [
+        {id: 'name', title: 'Name'},
+        {id: 'surname', title: 'Surname'},
+    ]
+});
+const inputLog = fs.readFileSync('log.csv','utf-8');
 let dataArray = [];
-
+let logData = [];
+let companyType = '';
 
 app.get('/', function (req, res) {
 
@@ -45,9 +56,9 @@ app.listen(3000, function () {
         await page.waitFor('input[name=session_key]');
         await page.waitFor('input[name=session_password]');
 
-        await page.$eval('input[name=session_key]', el => el.value = 'tyjxdnr93011@10minut.xyz');
+        await page.$eval('input[name=session_key]', el => el.value = 'radomskam@yahoo.fr');
         // tyjxdnr93011@10minut.xyz
-        await page.$eval('input[name=session_password]', el => el.value = 'Haslo112');
+        await page.$eval('input[name=session_password]', el => el.value = 'TTMS2019');
 
         /* Submit the form */
         page.click('.login__form_action_container > button', {waitUntil: 'networkidle0'});
@@ -63,6 +74,7 @@ app.listen(3000, function () {
         /* Get data function */
         async function getData() {
             /* Wait for page to load */
+            page.waitForNavigation({ waitUntil: 'domcontentloaded' });
             await page.waitFor(() => document.querySelector('.mn-invitation-list'));
             /* Get links from list page */
             let getLinks = await page.evaluate( async() => {
@@ -79,13 +91,15 @@ app.listen(3000, function () {
             });
             /* Save old list page url to turn it on when all links will be done and to direct to next page from pagination */
             let currentListPage = page.url();
+            console.log(getLinks.length)
             /* Iterate thought urls to open pages */
             try {
-                for (let j=0; j<getLinks.length; j++) {
+                for (let j=75; j<getLinks.length; j++) {
                     /* Open page from iterated url */
-                    await page.goto(getLinks[j].name);
+                    await page.goto(getLinks[j].name, {waitUntil: 'domcontentloaded'});
                     /* Wait for data div to load */
                     await page.waitFor(() => document.querySelector('.mr5'));
+                    await page.waitFor(() => document.querySelector('.pv-profile-section__section-info'));
                     /* Get the data and create object */
                     let data2 = await page.evaluate( async() => {
                     /* Define variables to store data */
@@ -119,7 +133,7 @@ app.listen(3000, function () {
                             console.log(country);
                         } else if (document.querySelector('.ph5 .mt1 .t-16') != null) {
                             let locations = document.querySelector('.ph5 .mt1 .t-16').innerText.split(",");
-                            country = locations[0];
+                            country = locations[locations.length - 1];
                             console.log(country);
                         }  else {
                             country = '';
@@ -153,7 +167,59 @@ app.listen(3000, function () {
                             position
                         }
                     });
-                    /* Push this object to data array */
+                    /* Save first three persons to log file */
+                    if (j < 3) {
+                        logData.push({
+                            name: data2.name,
+                            surname: data2.surname
+                        });
+                    }
+                    /* Chceck if current iterated person is in log file. If so generate data csv and end program */
+                    const jsonObj = csvjson.toObject(inputLog);
+                    for (let h=0; h < jsonObj.length; h++) {
+                        if (jsonObj[h].Name === data2.name && jsonObj[h].Surname === data2.surname) {
+                            csvWriter
+                                .writeRecords(dataArray)
+                                .then(()=> console.log('The CSV file was written successfully'));
+                            csvWriter2
+                                .writeRecords(logData)
+                                .then(()=> console.log('Log jest'));
+                            browser.close();
+                            return
+                        }
+                    }
+
+                    /* Let's start expedition to take company type hooray */
+                    /* Wait for page to load and get link to contact's company page */
+                    await page.waitFor(() => document.querySelector('.pv-profile-section__section-info a'),200);
+                    let getCompanyLink = await page.evaluate(() => {
+                        return document.querySelector('.pv-profile-section__section-info a').href;
+                    });
+                    /* Let's go to acc company page */
+                    await page.goto(getCompanyLink, {waitUntil: 'domcontentloaded'},700);
+                    /* Check if this is company page or this company doesnt' have acc */
+                    if (await page.$('a[data-control-name="page_member_main_nav_about_tab"]') != null) {
+                        /* If yes go to /about page */
+                        await page.goto(page.url() + 'about/', {waitUntil: 'domcontentloaded'});
+                        /* Wait for page to load */
+                        await page.waitFor(() => document.querySelector('dl dt'));
+                        /* And get company title data */
+                        let getDts = await page.evaluate(() => {
+                            let getDts = document.querySelectorAll('dl .org-page-details__definition-term');
+                            for (let i = 0; i < getDts.length; i++) {
+                                console.log(getDts[i].innerText);
+                                if (getDts[i].innerText === 'Type' || getDts[i].innerText === 'Rodzaj') {
+                                    companyType = getDts[i].nextElementSibling.innerText;
+                                }
+                            }
+                            return companyType
+                        });
+                        /* Add companyType to data */
+                        data2.companyType = getDts;
+                    } else {
+                        data2.companyType = '';
+                    }
+                    /* Save data to dataAttay */
                     dataArray.push(data2);
                 }
                 /* Back to old list page */
@@ -177,6 +243,7 @@ app.listen(3000, function () {
                         /* Go to next list page */
                         await page.goto(nextButton, {waitUntil: 'networkidle2'});
                         /* Wait for data div to load */
+                        page.waitForNavigation({ waitUntil: 'domcontentloaded' });
                         await page.waitFor(() => document.querySelector('.mn-invitation-list'));
                         /* Recall all getData function */
                         getData();
@@ -185,17 +252,24 @@ app.listen(3000, function () {
                         csvWriter
                             .writeRecords(dataArray)
                             .then(()=> console.log('The CSV file was written successfully'));
+                        csvWriter2
+                            .writeRecords(logData)
+                            .then(()=> console.log('Log jest'));
+                        browser.close();
                     }
                 } else {
                     /* Use dependency to convert json to csv and save file */
                     csvWriter
                         .writeRecords(dataArray)
                         .then(()=> console.log('The CSV file was written successfully'));
+                    csvWriter2
+                        .writeRecords(logData)
+                        .then(()=> console.log('Log jest'));
+                    browser.close();
                 }
             } catch(e) {
                 console.log(e);
             }
-
 
         }
 
@@ -203,6 +277,6 @@ app.listen(3000, function () {
         getData();
 
         /* Close browser */
-        // await browser.close();
+        // browser.close();
     });
 });

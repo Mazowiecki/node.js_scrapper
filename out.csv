@@ -1,9 +1,4 @@
-Name,Surname,Country,Company,Position
-Samed,Hasaj,Birmingham,Advanced,BA Hons. | Senior Marketing Operations Executive
-Amanda,Sleight,Londyn,Amazon Web Services,UK&I Partner Lead at Amazon Web Services
-Samuel,Turner,Birmingham,Advanced,Account Manager at Advanced
-Ashley,Williams,Londyn,Amazon Web Services,"Business Transformation: Data, AI, ML & IoT at Amazon Web Services"
-Stuart,Hargreaves,West Malling,Spambrella,(COO) WW Channels - Spambrella
-Lillie,Perkins,Marlow,Softcat plc,HR Business Partner at Softcat plc
-David,Dowle,Londyn,Fluidity Supply,Director at Fluidity and Virtual MSP
-India,Lopez,Obszar metropolitalny Nowy Jork,WeWork,Senior Recruiter at WeWork
+Name,Surname,Country,Company,Position,CompanyType
+Lillie,Perkins, Wielka Brytania ,Softcat plc,HR Business Partner at Softcat plc,Spółka akcyjna
+David,Dowle, Zjednoczone Królestwo ,Fluidity Supply,Director at Fluidity and Virtual MSP,
+India,Lopez, Stany Zjednoczone ,WeWork,Senior Recruiter at WeWork,Spółka prywatna
