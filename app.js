@@ -30,7 +30,7 @@ const csvWriter2 = createCsvWriter({
 const inputLog = fs.readFileSync('log.csv','utf-8');
 let dataArray = [];
 let logData = [];
-let companyType = '';
+
 
 app.get('/', function (req, res) {
 
@@ -56,16 +56,16 @@ app.listen(3000, function () {
         await page.waitFor('input[name=session_key]');
         await page.waitFor('input[name=session_password]');
 
-        await page.$eval('input[name=session_key]', el => el.value = 'radomskam@yahoo.fr');
+        await page.$eval('input[name=session_key]', el => el.value = 'tyjxdnr93011@10minut.xyz');
         // tyjxdnr93011@10minut.xyz
-        await page.$eval('input[name=session_password]', el => el.value = 'TTMS2019');
+        await page.$eval('input[name=session_password]', el => el.value = 'Haslo112');
 
         /* Submit the form */
         page.click('.login__form_action_container > button', {waitUntil: 'networkidle0'});
         await page.waitForNavigation();
 
         /* If captcha happend turn it on to have time to done captcha */
-        // await page.waitFor(8000);
+        await page.waitFor(8000);
 
         /* After login redirect to destination url */
         await page.goto('https://www.linkedin.com/mynetwork/invitation-manager/sent/', {waitUntil: 'networkidle2'});
@@ -75,7 +75,7 @@ app.listen(3000, function () {
         async function getData() {
             /* Wait for page to load */
             page.waitForNavigation({ waitUntil: 'domcontentloaded' });
-            await page.waitFor(() => document.querySelector('.mn-invitation-list'));
+            await page.waitForSelector('.mn-invitation-list');
             /* Get links from list page */
             let getLinks = await page.evaluate( async() => {
                 /* Get all persons links */
@@ -94,12 +94,11 @@ app.listen(3000, function () {
             console.log(getLinks.length)
             /* Iterate thought urls to open pages */
             try {
-                for (let j=75; j<getLinks.length; j++) {
+                for (let j=0; j<getLinks.length; j++) {
                     /* Open page from iterated url */
                     await page.goto(getLinks[j].name, {waitUntil: 'domcontentloaded'});
                     /* Wait for data div to load */
-                    await page.waitFor(() => document.querySelector('.mr5'));
-                    await page.waitFor(() => document.querySelector('.pv-profile-section__section-info'));
+                    await page.waitForSelector('.mr5');
                     /* Get the data and create object */
                     let data2 = await page.evaluate( async() => {
                     /* Define variables to store data */
@@ -191,23 +190,32 @@ app.listen(3000, function () {
 
                     /* Let's start expedition to take company type hooray */
                     /* Wait for page to load and get link to contact's company page */
-                    await page.waitFor(() => document.querySelector('.pv-profile-section__section-info a'),200);
+                    await page.waitFor(1500);
+                    await page.waitForSelector('.pv-profile-section__section-info');
+                    page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+                    await page.waitFor(1500);
                     let getCompanyLink = await page.evaluate(() => {
-                        return document.querySelector('.pv-profile-section__section-info a').href;
+                        let links = document.querySelectorAll('.pv-profile-section__section-info a');
+                        return links[0].href
                     });
                     /* Let's go to acc company page */
                     await page.goto(getCompanyLink, {waitUntil: 'domcontentloaded'},700);
                     /* Check if this is company page or this company doesnt' have acc */
                     if (await page.$('a[data-control-name="page_member_main_nav_about_tab"]') != null) {
-                        /* If yes go to /about page */
-                        await page.goto(page.url() + 'about/', {waitUntil: 'domcontentloaded'});
+                        /* If yes go to /about page.(sometimes last link opens '/about/' already so there is quick fix ) */
+                        let checkUrl = page.url().split('/');
+                        console.log(checkUrl)
+                        if (checkUrl[checkUrl.length -2] !== 'about') {
+                            await page.goto(page.url() + 'about/', {waitUntil: 'domcontentloaded'});
+                        }
                         /* Wait for page to load */
-                        await page.waitFor(() => document.querySelector('dl dt'));
+                        await page.waitFor(1500);
+                        await page.waitForSelector('dl dt');
                         /* And get company title data */
+                        let companyType = '';
                         let getDts = await page.evaluate(() => {
                             let getDts = document.querySelectorAll('dl .org-page-details__definition-term');
                             for (let i = 0; i < getDts.length; i++) {
-                                console.log(getDts[i].innerText);
                                 if (getDts[i].innerText === 'Type' || getDts[i].innerText === 'Rodzaj') {
                                     companyType = getDts[i].nextElementSibling.innerText;
                                 }
@@ -225,7 +233,7 @@ app.listen(3000, function () {
                 /* Back to old list page */
                 await page.goto(currentListPage);
                 /* Wait for page to load */
-                await page.waitFor(() => document.querySelector('.ember-view'));
+                await page.waitForSelector('.ember-view');
                 /* If there is navigation... */
                 if (await page.$('.mn-invitation-pagination') !== null) {
                     /* Check if button 'next page' dont have 'disabled' class. If do, it is last page of pagination */
@@ -244,7 +252,7 @@ app.listen(3000, function () {
                         await page.goto(nextButton, {waitUntil: 'networkidle2'});
                         /* Wait for data div to load */
                         page.waitForNavigation({ waitUntil: 'domcontentloaded' });
-                        await page.waitFor(() => document.querySelector('.mn-invitation-list'));
+                        await page.waitForSelector('.mn-invitation-list');
                         /* Recall all getData function */
                         getData();
                     } else {
